@@ -1,0 +1,50 @@
+image: ubuntu:latest
+
+stages:
+  - build
+
+variables:
+  MAVEN_VERSION: "3.9.12"
+  JAVA_VERSION: "21"
+
+build-archi:
+  stage: build
+  before_script:
+    # Install required packages
+    - apt-get update -qq
+    - apt-get install -y -qq git curl xvfb libgtk-3-0 libswt-gtk-4-java wget
+    
+    # Install Java 21
+    - apt-get install -y -qq openjdk-21-jdk
+    - export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+    - export PATH=$JAVA_HOME/bin:$PATH
+    - java -version
+    
+    # Install Maven
+    - wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+    - tar xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
+    - export PATH=/opt/apache-maven-${MAVEN_VERSION}/bin:$PATH
+    - mvn -version
+    
+    # Clone Archi repository
+    - git clone --recurse-submodules https://github.com/archimatetool/Archi.git archi-source
+    
+  script:
+    - cd archi-source
+    - xvfb-run mvn -V clean verify -P tests,product
+    
+  artifacts:
+    name: "archi-build-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - archi-source/com.archimatetool.editor.site/target/*.zip
+      - archi-source/com.archimatetool.editor.product/target/products/Archi-*.*
+    expire_in: 1 day
+    when: on_success
+  
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  
+  timeout: 2h
