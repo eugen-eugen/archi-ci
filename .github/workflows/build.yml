@@ -38,3 +38,13 @@ jobs:
     - name: Build Archi Project
       run: |
         xvfb-run mvn -V clean verify -P tests,product
+    
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: archi-build-artifacts
+        path: |
+          com.archimatetool.editor.site/target/*.zip
+          com.archimatetool.editor.product/target/products/Archi-*.*
+        retention-days: 30
